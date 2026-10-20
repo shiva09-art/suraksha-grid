@@ -36,6 +36,10 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
+  const [mapMode, setMapMode] = React.useState<'satellite' | 'street' | 'dark'>('satellite');
+  const baseTileLayerRef = useRef<L.TileLayer | null>(null);
+  const labelsTileLayerRef = useRef<L.TileLayer | null>(null);
+
   // Layer groups for dynamic updating
   const floodLayerRef = useRef<L.Polygon | null>(null);
   const edgesLayerGroupRef = useRef<L.LayerGroup | null>(null);
@@ -55,12 +59,6 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       zoomControl: true
     });
 
-    // High performance OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | SURAKSHA Grid Simulation',
-      maxZoom: 19
-    }).addTo(map);
-
     mapInstanceRef.current = map;
 
     // Create Layer Groups
@@ -73,6 +71,58 @@ export const MapComponent: React.FC<MapComponentProps> = ({
       mapInstanceRef.current = null;
     };
   }, []);
+
+  // Update Base Tile Layer when mapMode changes
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (baseTileLayerRef.current) {
+      baseTileLayerRef.current.remove();
+    }
+    if (labelsTileLayerRef.current) {
+      labelsTileLayerRef.current.remove();
+      labelsTileLayerRef.current = null;
+    }
+
+    if (mapMode === 'satellite') {
+      // High-resolution real photorealistic satellite imagery (ESRI World Imagery)
+      baseTileLayerRef.current = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        {
+          attribution: 'Tiles &copy; Esri, Earthstar Geographics | SURAKSHA Grid Real Satellite',
+          maxZoom: 19
+        }
+      ).addTo(map);
+
+      // Add roads and place labels overlay on top of satellite imagery
+      labelsTileLayerRef.current = L.tileLayer(
+        'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        {
+          maxZoom: 19,
+          opacity: 0.85
+        }
+      ).addTo(map);
+    } else if (mapMode === 'dark') {
+      // CartoDB Dark Matter for tactical command
+      baseTileLayerRef.current = L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        {
+          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+          maxZoom: 19
+        }
+      ).addTo(map);
+    } else {
+      // OpenStreetMap Standard Street View
+      baseTileLayerRef.current = L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+          attribution: '&copy; OpenStreetMap contributors',
+          maxZoom: 19
+        }
+      ).addTo(map);
+    }
+  }, [mapMode]);
 
   // Update Flood Polygon
   useEffect(() => {
@@ -353,6 +403,48 @@ export const MapComponent: React.FC<MapComponentProps> = ({
             <span>Alternative Bypass Route</span>
           </div>
         </div>
+      </div>
+
+      {/* Floating Map Mode Layer Switcher (Real Satellite / Street / Dark) */}
+      <div className="absolute top-4 left-14 z-20 flex items-center bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl p-1 shadow-xl pointer-events-auto text-xs font-medium">
+        <button
+          onClick={() => setMapMode('satellite')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all ${
+            mapMode === 'satellite'
+              ? 'bg-cyan-600 text-white font-bold shadow-md'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800'
+          }`}
+          title="Switch to Real Photorealistic Satellite Imagery (ESRI World Imagery)"
+        >
+          <span>🛰️</span>
+          <span className="hidden sm:inline">Real Satellite</span>
+        </button>
+
+        <button
+          onClick={() => setMapMode('street')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all ${
+            mapMode === 'street'
+              ? 'bg-blue-600 text-white font-bold shadow-md'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800'
+          }`}
+          title="Switch to OpenStreetMap Street Map"
+        >
+          <span>🗺️</span>
+          <span className="hidden sm:inline">Street Map</span>
+        </button>
+
+        <button
+          onClick={() => setMapMode('dark')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all ${
+            mapMode === 'dark'
+              ? 'bg-purple-600 text-white font-bold shadow-md'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800'
+          }`}
+          title="Switch to Tactical Dark Map (CartoDB)"
+        >
+          <span>🕶️</span>
+          <span className="hidden sm:inline">Tactical Dark</span>
+        </button>
       </div>
 
       {/* Floating Bridge Blockage Quick Status Overlay */}
