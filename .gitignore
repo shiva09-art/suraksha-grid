@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+*.log
+repo_research_basic.json
+repo_readmes.json
+key_repo_trees.json
+repo_summary_extracted.txt
